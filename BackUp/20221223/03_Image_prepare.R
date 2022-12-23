@@ -4,7 +4,7 @@
 	 library(parallel)
 	 library(doParallel)
 	 library(foreach)
-     Batch=4000
+ 
      date1=substr(basename(labelInput),1,15)
      Tpth = paste0(labelInput,"\\", date1, ".csv")
 	 if (file.exists(Tpth)==F) {
@@ -24,33 +24,23 @@
     Presence=length(list.files(SaveDir))
     if (Need !=Presence) {
 	
-      exsts=list.files(SaveDir)
-	  NeedTbl=table[!table$imgName %in% exsts,]
-	  
-      print(paste0("Need prepare ", length(NeedTbl$imgName), " Images from  ",  length(table$imgName)))
-      Loops=round(length(NeedTbl$imgName)/Batch)+1
-      if (length(NeedTbl$imgName) < Batch) {Loops=1}
-	  
-   for (r in 1: Loops) {
-   
-    cl <- makePSOCKcluster(detectCores (logical=FALSE)-2) 
+    #	if (exists("blank")==F){blank= image_blank(512,512,color = "white")}  #white
+		
+    cl <- makePSOCKcluster(detectCores (logical=FALSE)-3) 
+   # clusterExport(cl, "blank")
     clusterEvalQ(cl, {library(magick)})
     registerDoParallel(cl)
-   
-    exsts=list.files(SaveDir)
-    NeedTbl1=table[!table$imgName %in% exsts,]
-   # if (length(NeedTbl1$imgName) < Batch) {Batch=length(NeedTbl1$imgName)}
-	
-    foreach(i = 1:Batch) %dopar% {   #
+
+  foreach(i = 5000:length(table$imgName)) %dopar% {   #length(table$imgName)
   ################
- #for (i in 1:length(NeedTbl$imgName)){
-  
-	  selectRow <- NeedTbl1[i,]
+ #for (i in 1:length(table$imgName)){
+      strtTime=Sys.time()
+	  selectRow <- table[i,]
       ImgN=selectRow$imgName 	                                                               
       path<-paste0(KMLDir, "\\",ImgN)            
       CheckExists = paste0(SaveDir, "\\",ImgN)
 
-      if(file.exists(CheckExists)==F & file.exists(path)) {                                                                   
+      if(file.exists(CheckExists)==F) {                                                                   
         img=image_read(path)  
         ################################################################################## CENTRAL WITH left right EARS
        # lpi<-paste0(KMLDir,"\\",selectRow$leftName)
@@ -115,9 +105,10 @@
         leftRightUpDownJoin=image_append(c(leftRightUpJoin,DownCrop2), stack = T)
         image_write(leftRightUpDownJoin,CheckExists,format="jpg")
       }
-	
+	  fnshTime=Sys.time()
+	  duration=as.numeric(fnshTime-strtTime)
 	 
     }
  stopCluster(cl)
   } 
-  }   
+     

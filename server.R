@@ -12,15 +12,15 @@ function(input, output, session) {
    
     BatchProcessVector<<-input$Bath_Process
  	OPPListPred1<<-input$OPPListPred
-	
+	if (OPPListPred1=="All") {OPPListPred1 <<- listOPP}
   source("Modules/ListTMPUpdate.r")  })
   ############################################################################### 
   observeEvent(input$Start_Batch_process, {
     BatchProcessVector<<-input$Bath_Process
   	OPPListPred1<<-input$OPPListPred
-   if (OPPListPred1=="All") {OPPListPred1=list.files(pthOPP,recursive=T, pattern=".psx", full.names=T)}
+   if (OPPListPred1=="All") {OPPListPred1 <<- listOPP}
    source("Modules/ListTMPUpdate.r")
-    pth=paste0(pthOPP,"\\log.csv")
+    pth <<- paste0(pthOPP,"\\log.csv")
     lg=data.frame(OPPListPred1=OPPListPred1,Process="Start",dtime=paste0(date())); write.csv(lg,pth,row.names = F)   
 #############  	   
 	while (OPPListPred1 != "") {
