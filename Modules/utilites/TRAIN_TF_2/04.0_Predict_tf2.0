@@ -1,0 +1,89 @@
+
+                     labelInput 
+                     Species="NFSPup"
+					 batch_size = 30
+                     batch_size_global =  batch_size*10
+                    
+                     date1=substr(basename(paste0(labelInput)),1,15)
+					 predict_dir = paste0(labelInput,"\\Predict\\TilesOverlap")
+					 predsDir = paste0(labelInput,"\\Predict\\Preds") 
+					 unlink(predsDir,recursive=T)
+					 dir.create(predsDir, showWarnings=F)
+					 PTHweight = paste0(System_data,"\\weights\\NFSpup\\", NFS_Pup_weight_pth) # NFS_Pup_weight_pth
+					 listImgdonePredPTH = paste0(labelInput,"\\Predict\\listImgdonePred.csv"); unlink(listImgdonePredPTH)
+					 vision_dimensions=512
+					 
+##############################################################################
+if(exists("unet1")==F) {source("Modules/04.1_Unet512Create.r")} 
+##############################################################################  
+   weight<<-readRDS(PTHweight)
+   set_weights(unet1,weight)
+
+ dice_coef <<- custom_metric("dice_coef", function(y_true, y_pred, smooth = 1.0) {
+  y_true_f <- k_flatten(y_true)
+  y_pred_f <- k_flatten(y_pred)
+  intersection <- k_sum(y_true_f * y_pred_f)
+  (2 * intersection + smooth) / (k_sum(y_true_f) + k_sum(y_pred_f) + smooth)
+})
+ dice_coef_loss <- function(y_true, y_pred) - dice_coef(y_true, y_pred)
+############################################################### 
+  unet1 <<- unet1 %>%
+       compile(
+           optimizer =  optimizer_adam(lr= 0.0001 , decay = 1e-6 ),
+           loss = dice_coef_loss,
+           metrics = dice_coef 
+              )
+################################################
+  listImage_glob = list.files(predict_dir, full.names = TRUE)
+  global_steps <<- round(length(listImage_glob)/batch_size_global)  #+1 
+##############################################################################	
+create_dataset <- function(data, batch_size = batch_size, vision_dimensions) {  
+	  dataset <- data %>% 
+		tensor_slices_dataset() %>% 
+		dataset_map(~.x %>% list_modify(
+		  img = tf$image$decode_jpeg(tf$io$read_file(.x$img))
+		)) %>% 
+		dataset_map(~.x %>% list_modify(
+		  img = tf$image$convert_image_dtype(.x$img, dtype = tf$float32)
+		)) %>% 
+		dataset_map(~.x %>% list_modify(
+		  img = tf$image$resize(.x$img, size = shape(vision_dimensions, vision_dimensions))
+		))	  
+	 dataset <- dataset %>% 
+		dataset_batch(batch_size)
+	  dataset %>% 
+		dataset_map(unname) # Keras needs an unnamed output.
+	}
+###################################################################################
+	  #################################################################################
+  for (e in 1:global_steps) {
+    
+	batch_ind_global <- c(1:length(listImage_glob))[1:batch_size_global]
+    listImage <- listImage_glob[batch_ind_global]
+    listImage=listImage[is.na(listImage)==F]
+    if (length(listImage_glob) > length(listImage)) {
+      listImage_glob <<- listImage_glob[-batch_ind_global] 
+    }
+	data <- tibble::tibble(img = listImage)
+    #######################################################################################
+	pred_dataset <- create_dataset(data, batch_size=batch_size, vision_dimensions=vision_dimensions)
+    preds=keras:::predict.keras.engine.training.Model(object=unet1,
+                                                     x=pred_dataset)
+
+
+
+	pthSavePreds=paste0(predsDir,"\\Preds_",Species,"_",e)
+	Preds1=list(preds=preds,DimPreds=dim(preds),dimModel=dimModel,listImageBl=listImage)
+	
+	
+	
+	
+	
+	saveRDS(Preds1,pthSavePreds)
+	print(paste0(e," in  ",global_steps))
+
+	
+}
+
+
+

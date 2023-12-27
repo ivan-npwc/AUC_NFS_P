@@ -17,18 +17,33 @@ if(exists("unet1")==F) {source("Modules/04.1_Unet512Create.r")}
 ##############################################################################  
    weight<<-readRDS(PTHweight)
    set_weights(unet1,weight)
-   
-   attr(dice_coef_loss, "py_function_name") <- "dice_coef_loss"
-   attr(dice_coef, "py_function_name") <- "dice_coef"
-   
-   unet1 <- unet1 %>%
-        compile(
-        optimizer = optimizer_adam(lr= 0.0001 , decay = 1e-6 ),     #optimizer_nadam              
-        loss =   dice_coef_loss,    
-        metrics = c(dice_coef) 
-    )
-	
-	
+#  
+#   attr(dice_coef_loss, "py_function_name") <- "dice_coef_loss"
+#   attr(dice_coef, "py_function_name") <- "dice_coef"
+#   
+#   unet1 <- unet1 %>%
+#        compile(
+#        optimizer = optimizer_adam(lr= 0.0001 , decay = 1e-6 ),     #optimizer_nadam              
+#        loss =   dice_coef_loss,    
+#        metrics = c(dice_coef) 
+#    )
+ dice_coef <<- custom_metric("dice_coef", function(y_true, y_pred, smooth = 1.0) {
+  y_true_f <- k_flatten(y_true)
+  y_pred_f <- k_flatten(y_pred)
+  intersection <- k_sum(y_true_f * y_pred_f)
+  (2 * intersection + smooth) / (k_sum(y_true_f) + k_sum(y_pred_f) + smooth)
+})
+ dice_coef_loss <- function(y_true, y_pred) - dice_coef(y_true, y_pred)
+###############################################################
+	 
+  unet1 <<- unet1 %>%
+       compile(
+           optimizer =  optimizer_adam(lr= 0.0001 , decay = 1e-6 ),
+           loss = dice_coef_loss,#"binary_crossentropy",
+           metrics = dice_coef #, metric_binary_accuracy
+              )
+################################################
+
   layer_output <- get_layer(unet1, index=1)$output
   shape=layer_output$shape								 
   dimModel<<-c(paste0(shape[2]),paste0(shape[2]))								 

@@ -1,8 +1,9 @@
      
 	 library(EBImage)
+	 library(magick)
      Species="NFSPup"
 	 labelInput
-	 Blob_analysis_Check
+	 Blob_analysis_Check = F
 
 	 
      predsDir=paste0(labelInput,"\\Predict\\Preds")
@@ -13,8 +14,8 @@
 
   for (f in 1:length(listPreds)) {
   
-   cl <- makePSOCKcluster(detectCores (logical=F)-1) 
-    clusterEvalQ(cl, {library(EBImage)})
+   cl <- makePSOCKcluster(detectCores (logical=F)-2) 
+    clusterEvalQ(cl, {library(EBImage); library(magick)})
     registerDoParallel(cl)
   
   
@@ -37,8 +38,8 @@ resultBlob_tmp <- foreach(i = 1:lngth,.combine=rbind) %dopar% {
      img_pth=listImageBl[i]
      mask0=preds[i, , , ]
 	 
-     img0 <- t(mask0)
-     dim(img0) <- c(dimModel[1], dimModel[2], 1)
+     img0 <- mask0#t(mask0)
+     dim(img0) <- c(512, 512, 1)
      img = getFrame(img0, 1)
        nmask = thresh(img, 18, 18, 0.009)  
        nmask1 <- fillHull(nmask)
@@ -65,6 +66,7 @@ saveDir=paste0(labelInput,"\\Predict\\BlobCheck"); unlink(saveDir,recursive=T);d
      name=basename(listImageBl[i])
      img_pth=listImageBl[i]
      mask0=preds[i, , , ]
+	 mask0 <- t(mask0)
 		   
 		   nmask5=as.Image(resize(mask0,1024,1024))
 		   colorMode(nmask5)="Color"
@@ -82,7 +84,7 @@ if (is.null(resultBlob_tmp)==F){resultBlob=rbind(resultBlob,resultBlob_tmp)}
      stopCluster(cl)         
  
 }
-            resultBlob$DimModel=dimModel[1]
+            resultBlob$DimModel="512"
 		   write.csv(resultBlob,pth_resultBlob,row.names = F)
 		  
       
