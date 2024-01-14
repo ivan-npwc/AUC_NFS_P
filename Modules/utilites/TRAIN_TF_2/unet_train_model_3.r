@@ -10,19 +10,19 @@ library(raster)
 # Parameters -----------------------------------------------------
     TypeTrain ="TrainEmptyModel" #Retrain
 	trainDir =  "C:\\Users\\usato\\SSL_DB\\TRAIN\\NFSp_withZero"
-	Weight = "C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\System data\\weights\\NFSpup\\20231219_Val_039_epoch_18"
+	Weight = "C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\System data\\weights\\NFSpup\\20231227_Val_0.49_epoch_12"
 	epochs =15
 	batch_size=4L	
 	vision_dimensions=512
 	ValTrainSplit=0.9 # use 90% for train and 10 for validate
 	NotUseEmptyImgs = T
-	limitImgsSize=5000
+	limitImgsSize=10000
 	Species=basename(trainDir)
     dateTrain=format(Sys.time(),  "%Y%m%d") 
 	images_dir=paste0(trainDir,"\\Image")
 	masks_dir=paste0(trainDir,"\\Mask")
 	shape=c(vision_dimensions,vision_dimensions,3)
-############
+##################################################################################
      listImgS <<- list.files(images_dir)
 	 ImgsExten=extension(listImgS)[1]
 	 listImgSNoExt=substr(listImgS,1,nchar(listImgS)-nchar(ImgsExten))
@@ -32,11 +32,11 @@ library(raster)
 	 MskNoExt=substr(ListMskS,1,nchar(ListMskS)-nchar(MskExten))
      deleteListImgs<<- listImgSNoExt[!(listImgSNoExt %in% MskNoExt)] # here is IMGS DELETE without msk 
      deleteListMsks<<- MskNoExt[!(MskNoExt %in% listImgSNoExt)]
-     deleteListImgs1=paste0(images_dir,"\\",deleteListImgs,"jpg")
-	 deleteListImgs1=paste0(images_dir,"\\",deleteListImgs,"png")
+     deleteListImgs1=paste0(images_dir,"\\",deleteListImgs,".jpg")
+	 deleteListImgs2=paste0(images_dir,"\\",deleteListImgs,".png")
      deleteListMsk2=paste0(masks_dir,"\\",deleteListMsks,".png")
-	 unlink(deleteListImgs1)
-	 unlink(deleteListImgs2)
+	 unlink(deleteListImgs1, recursive=T)
+	 unlink(deleteListImgs2, recursive=T)
 	 unlink(deleteListMsk1)
 	 print(paste0("Found   ",length(ListMskS), "  Masks"))
 #################
@@ -65,14 +65,14 @@ if (exists("unet1")==F){source("C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\Modules\\ut
            metrics = dice_coef #, metric_binary_accuracy
               )
 ########################################	
-	  data <- tibble::tibble(
+	  data1 <- tibble::tibble(
 	  img = list.files(images_dir, full.names = TRUE),
 	  mask = list.files(masks_dir, full.names = TRUE),
 	  imgSize=file.size(list.files(images_dir, full.names = TRUE)))
 	  
-if (NotUseEmptyImgs==T){data=data[data$imgSize > limitImgsSize,]}
+     if (NotUseEmptyImgs==T){data1=data1[data1$imgSize > limitImgsSize,];print (paste0("Found   ",length(data1$img), "  Imgs with size more than  "))}
 	  
-	  data <- rsample::initial_split(data, prop = ValTrainSplit)	
+	  data <- rsample::initial_split(data1, prop = ValTrainSplit)	
 ##########################################################################
 	random_bsh <- function(img) {                                           
 	img %>% 
@@ -84,7 +84,6 @@ if (NotUseEmptyImgs==T){data=data[data$imgSize > limitImgsSize,]}
 ############
 left_right  <- function(img) {img %>% tf$image$flip_left_right()}
 up_down <- function(img) {img %>% tf$image$flip_up_down()}
-
 ###################################################################################################################	
 	create_dataset <- function(data, train, batch_size = batch_size, vision_dimensions) {  
 	  dataset <- data %>% 
@@ -102,20 +101,21 @@ up_down <- function(img) {img %>% tf$image$flip_up_down()}
 		  mask = tf$image$resize(.x$mask, size = shape(vision_dimensions, vision_dimensions))
 		))
 	  
-		dataset1 <- dataset# %>% 
-	#	  dataset_map(~.x %>% list_modify(
-	#		img = random_bsh(.x$img)
-	#	  ))  
+	  if (rnorm(1) > 0.5) {
+		dataset <- dataset %>% 
+		            dataset_map(~.x %>% list_modify(
+			        img = random_bsh(.x$img)
+		  ))} 
 	if ( rnorm(1)>0) {	  
-	  dataset1 <- dataset1 %>% dataset_map(~.x %>% list_modify(img = left_right(.x$img))) 
-	  dataset1 <- dataset1 %>% dataset_map(~.x %>% list_modify(mask = left_right(.x$mask))) 
+	  dataset <- dataset %>% dataset_map(~.x %>% list_modify(img = left_right(.x$img))) 
+	  dataset <- dataset %>% dataset_map(~.x %>% list_modify(mask = left_right(.x$mask))) 
 	 } 
 	  
 	if ( rnorm(1)>0) {	  
-	  dataset1 <- dataset1 %>% dataset_map(~.x %>% list_modify(img = up_down(.x$img))) 
-	  dataset1 <- dataset1 %>% dataset_map(~.x %>% list_modify(mask = up_down(.x$mask))) 
+	  dataset <- dataset %>% dataset_map(~.x %>% list_modify(img = up_down(.x$img))) 
+	  dataset <- dataset %>% dataset_map(~.x %>% list_modify(mask = up_down(.x$mask))) 
 	 }
-		dataset2 <- dataset1 %>% 
+		dataset2 <- dataset %>% 
 		  dataset_shuffle(buffer_size = batch_size*vision_dimensions)	  
 	  dataset3 <- dataset2 %>% 
 		dataset_batch(batch_size)
@@ -179,6 +179,8 @@ unet1 %>%  keras:::fit.keras.engine.training.Model(
   validation_data = validation_dataset,  
  callbacks = callbacks_list)
 
+a=get_weights(unet1)
+saveRDS(a,"WghtsNFSp")
 ##################################################################### CHECK
 # predictions=keras:::predict.keras.engine.training.Model(object=unet1,
 #                                                   x=training_dataset,
@@ -187,10 +189,12 @@ unet1 %>%  keras:::fit.keras.engine.training.Model(
 #                                                   steps = 1
 #                                                   )
 ##################################################################
-batch <- training_dataset %>% as_iterator() %>% iter_next()
+#batch <- training_dataset %>% as_iterator() %>% iter_next()
+
+
 images <- tibble(
  image = batch[[1]] %>% array_branch(1),
- # predicted_mask = predictions[,,,1] %>% array_branch(1),
+  #predicted_mask = predictions[,,,1] %>% array_branch(1),
   mask = batch[[2]][,,,1]  %>% array_branch(1)
 ) %>% 
   sample_n(2) %>% 
@@ -206,6 +210,5 @@ out <- magick::image_append(c(
  # magick::image_append(images$predicted_mask, stack = TRUE)
   )
 )
-
 plot(out)
 

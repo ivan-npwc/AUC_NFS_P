@@ -44,8 +44,8 @@ unet1 <<- unet1 %>%
 listImage_glob = list.files(predict_dir, full.names = TRUE)
 if (NotUseEmptyImgs==T) {
                          inf=data.frame(listImage_glob=listImage_glob,file_size=as.numeric(file.size(listImage_glob)))
-						 listImage_glob=inf$listImage_glob[inf$file_size > 100000]
-						 exl=length(inf$listImage_glob[inf$file_size < 100000])
+						 listImage_glob=inf$listImage_glob[inf$file_size > 10000]
+						 exl=length(inf$listImage_glob[inf$file_size < 10000])
 						 print(paste0("Exlude  ", exl, " Images and for predict available  ", length (listImage_glob) , "   Images"))
 }  
 global_steps <<- round(length(listImage_glob)/batch_size_global)  #+1 
@@ -128,5 +128,5 @@ print(paste0("Done  ", e, "  blobs analisis from  " ,global_steps))
 		 } 
 }
 
- if (IncludeBlobAnalis==T){write.csv(resultBlob,pth_resultBlob,row.names = F)}
+ if (IncludeBlobAnalis==T){write.csv(resultBlob,pth_resultBlob,row.names = F);stopCluster(cl)}
 

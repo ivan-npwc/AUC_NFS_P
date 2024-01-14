@@ -11,7 +11,7 @@ source("Modules/07.1_KMLwrite_function.r")
 							 pathTablePoints=paste0(labelInput, "\\Predict\\",Species, "_BlobTable_GEO_",date1, ".csv")
 					         dat<-read.csv(pathTablePoints)
                              if (Species =="NFSPup") {BlobFemaleLimit=70}
-							 kmlPathSave1=paste0(labelInput,"\\Predict\\",date1,".kml")
+							 kmlPathSave1=paste0(labelInput,"\\Predict\\","#",NFS_Pup_weight_pth,"#",date1,".kml")
 							 ObserverPointP=list.files(paste0(labelInput,"\\Observer_count"), full.names=T, pattern="kml|shp")[1]
 							 Rookery_pol=list.files(paste0(labelInput,"\\Polygons\\Rookery"), full.names=T, pattern="kml|shp")[1]
 
