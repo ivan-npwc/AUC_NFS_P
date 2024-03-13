@@ -11,10 +11,9 @@ navbarPage(actionLink('ResetSetting',   label=paste0("INPUT:___", pthOPP), style
                                                            "01_Unzip"="01_Unzip",
 														   "02.0_KMLprepare"="02.0_KMLprepare",
 														   "03_Image_prepare"="03_Image_prepare",
-                                                           "04_Unet"="04_Predict_tf2", #  #04.0_Unet
-														   "05_BlobAnalys"="05_BlobAnalys",
-														   "06_Geo_ref"="06_Geo_ref",
-														   "07_KML"="07.0_KML",
+                                "04_Predict_tf2"="04_Predict_tf2", 
+														   "05_Geo_ref"="05_Geo_ref",
+														   "06_KML"="06_KML",
 													
 														   
 														   

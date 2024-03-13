@@ -1,4 +1,5 @@
-
+                    library(unet)
+					library(keras)
                      labelInput 
                      Species="NFSPup"
 					 batch_size = 30
@@ -9,13 +10,15 @@
 					 predsDir = paste0(labelInput,"\\Predict\\Preds") 
 					 unlink(predsDir,recursive=T)
 					 dir.create(predsDir, showWarnings=F)
-					 PTHweight = paste0(System_data,"\\weights\\NFSpup\\", NFS_Pup_weight_pth) # NFS_Pup_weight_pth
+					 PTHweight = "C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\System data\\weights\\NFSpup\\all_1024_20240119_tr_038_epoch_01_512"
 					 listImgdonePredPTH = paste0(labelInput,"\\Predict\\listImgdonePred.csv"); unlink(listImgdonePredPTH)
 					 vision_dimensions=512
 					 
 ##############################################################################
-if(exists("unet1")==F) {source("Modules/04.1_Unet512Create.r")} 
-##############################################################################  
+if(exists("unet1")==F) {
+unet1 <<- unet(input_shape=c(vision_dimensions,vision_dimensions,3), num_classes = 1,  filters = 16, num_layers = 4, output_activation = "sigmoid")
+} 
+#############################################################################  
    weight<<-readRDS(PTHweight)
    set_weights(unet1,weight)
 

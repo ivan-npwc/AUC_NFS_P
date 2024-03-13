@@ -7,20 +7,28 @@ library(tidyverse)
 library(rsample)
 library(reticulate)
 library(raster)
+library(unet)
+
 # Parameters -----------------------------------------------------
-    TypeTrain ="TrainEmptyModel" #Retrain
-	trainDir =  "C:\\Users\\usato\\SSL_DB\\TRAIN\\NFSp_withZero"
-	Weight = "C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\System data\\weights\\NFSpup\\20231227_Val_0.49_epoch_12"
-	epochs =15
+ #   TypeTrain ="TrainEmptyModel" #Retrain
+	trainDir =  "C:\\Users\\usato\\SSL_DB\\TRAIN\\2021-2022_TRAIN\\all_1024"  
+	#Val_dir = "C:\\Users\\usato\\SSL_DB\\TRAIN\\2021-2022_VAL" 
+	#Weight = "C:\\Users\\usato\\Documents\\start"
+	model_pth="C:\\Users\\usato\\SSL_DB\\TRAIN\\2021-2022_TRAIN\\all_512\\Checkpoints\\all_512_20240118_tr_0.38_epoch_01_512.h5"
+	epochs =1
 	batch_size=4L	
 	vision_dimensions=512
-	ValTrainSplit=0.9 # use 90% for train and 10 for validate
+	ValTrainSplit=0.99 # use 90% for train and 10 for validate
 	NotUseEmptyImgs = T
 	limitImgsSize=10000
 	Species=basename(trainDir)
     dateTrain=format(Sys.time(),  "%Y%m%d") 
 	images_dir=paste0(trainDir,"\\Image")
 	masks_dir=paste0(trainDir,"\\Mask")
+	
+	#Val_images_dir=paste0(Val_dir,"\\Image")
+	#Val_masks_dir=paste0(Val_dir,"\\Mask")
+	
 	shape=c(vision_dimensions,vision_dimensions,3)
 ##################################################################################
      listImgS <<- list.files(images_dir)
@@ -35,17 +43,18 @@ library(raster)
      deleteListImgs1=paste0(images_dir,"\\",deleteListImgs,".jpg")
 	 deleteListImgs2=paste0(images_dir,"\\",deleteListImgs,".png")
      deleteListMsk2=paste0(masks_dir,"\\",deleteListMsks,".png")
-	 unlink(deleteListImgs1, recursive=T)
-	 unlink(deleteListImgs2, recursive=T)
-	 unlink(deleteListMsk1)
+    if (file.exists(deleteListImgs1[1])){ unlink(deleteListImgs1, recursive=T)}
+	if (file.exists(deleteListImgs2[1])){ unlink(deleteListImgs2, recursive=T) }
+	if (file.exists(deleteListMsk2[1])){unlink(deleteListMsk2)}
 	 print(paste0("Found   ",length(ListMskS), "  Masks"))
 #################
 ######################################
-if (exists("unet1")==F){source("C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\Modules\\utilites\\TRAIN_TF_2\\Unet512Create.r")} #UnetVGG16Create
-
+#if (exists("unet1")==F){source("C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\Modules\\utilites\\TRAIN_TF_2\\Unet512Create.r")} #UnetVGG16Create
+unet1 = unet(input_shape=shape, num_classes = 1, dropout = 0.3, filters = 16, num_layers = 4, output_activation = "sigmoid")
+#unet1
 #if (TypeTrain == ""){
-    SWeight=readRDS(Weight)
-	 set_weights(unet1,SWeight)
+  #  SWeight=readRDS(Weight)
+  #   set_weights(unet1,SWeight)
 #	 
 #
 
@@ -57,7 +66,9 @@ if (exists("unet1")==F){source("C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\Modules\\ut
 })
  dice_coef_loss <- function(y_true, y_pred) - dice_coef(y_true, y_pred)
 ###############################################################
-	 
+unet1 <- load_model_hdf5(model_pth, custom_objects = c(dice_coef = dice_coef,
+                                                        dice_coef_loss=dice_coef_loss))
+###############################################################	 
   unet1 <<- unet1 %>%
        compile(
            optimizer =  optimizer_adam(lr= 0.0001 , decay = 1e-6 ),
@@ -65,27 +76,36 @@ if (exists("unet1")==F){source("C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\Modules\\ut
            metrics = dice_coef #, metric_binary_accuracy
               )
 ########################################	
-	  data1 <- tibble::tibble(
+	  data_train <- tibble::tibble(
 	  img = list.files(images_dir, full.names = TRUE),
 	  mask = list.files(masks_dir, full.names = TRUE),
 	  imgSize=file.size(list.files(images_dir, full.names = TRUE)))
 	  
-     if (NotUseEmptyImgs==T){data1=data1[data1$imgSize > limitImgsSize,];print (paste0("Found   ",length(data1$img), "  Imgs with size more than  "))}
+#	  data_val <- tibble::tibble(
+#	  img = list.files(Val_images_dir, full.names = TRUE),
+#	  mask = list.files(Val_masks_dir, full.names = TRUE),
+#	  imgSize=file.size(list.files(Val_images_dir, full.names = TRUE)))
 	  
-	  data <- rsample::initial_split(data1, prop = ValTrainSplit)	
+	  
+     if (NotUseEmptyImgs==T){data_train=data_train[data_train$imgSize > limitImgsSize,];print (paste0("Found   ",length(data_train$img), "  Imgs to TRAIN with size more than  ", limitImgsSize))}
+#	 if (NotUseEmptyImgs==T){data_val=data_val[data_val$imgSize > limitImgsSize,];print (paste0("Found   ",length(data_val$img), "  Imgs to VALIDATE #with size more than  ", limitImgsSize))}
+	  
+	  data_train <- rsample::initial_split(data_train, prop = ValTrainSplit)
+#	  data_val <- rsample::initial_split(data_val, prop = 0.9999)
+   
 ##########################################################################
 	random_bsh <- function(img) {                                           
 	img %>% 
-	tf$image$random_brightness(max_delta = 0.1) %>% 
-	tf$image$random_contrast(lower = 0.5, upper = 0.6) %>% 
-	tf$image$random_saturation(lower = 0.5, upper = 0.6) %>% 
+	tf$image$random_brightness(max_delta = 0.3) %>% 
+	tf$image$random_contrast(lower = 0.3, upper = 0.8) %>% 
+	tf$image$random_saturation(lower = 0.3, upper = 0.8) %>% 
 	tf$clip_by_value(0, 1) # clip the values into [0,1] range.
 	}
 ############
 left_right  <- function(img) {img %>% tf$image$flip_left_right()}
 up_down <- function(img) {img %>% tf$image$flip_up_down()}
 ###################################################################################################################	
-	create_dataset <- function(data, train, batch_size = batch_size, vision_dimensions) {  
+	create_dataset <- function(data, batch_size = batch_size, vision_dimensions) {  
 	  dataset <- data %>% 
 		tensor_slices_dataset() %>% 
 		dataset_map(~.x %>% list_modify(
@@ -101,7 +121,7 @@ up_down <- function(img) {img %>% tf$image$flip_up_down()}
 		  mask = tf$image$resize(.x$mask, size = shape(vision_dimensions, vision_dimensions))
 		))
 	  
-	  if (rnorm(1) > 0.5) {
+	  if (rnorm(1) > 0.3) {
 		dataset <- dataset %>% 
 		            dataset_map(~.x %>% list_modify(
 			        img = random_bsh(.x$img)
@@ -115,17 +135,18 @@ up_down <- function(img) {img %>% tf$image$flip_up_down()}
 	  dataset <- dataset %>% dataset_map(~.x %>% list_modify(img = up_down(.x$img))) 
 	  dataset <- dataset %>% dataset_map(~.x %>% list_modify(mask = up_down(.x$mask))) 
 	 }
-		dataset2 <- dataset %>% 
-		  dataset_shuffle(buffer_size = batch_size*vision_dimensions)	  
-	  dataset3 <- dataset2 %>% 
+#		dataset <- dataset %>% 
+#	  dataset_shuffle(buffer_size = batch_size*vision_dimensions)	  
+	 
+	 dataset3 <- dataset %>% 
 		dataset_batch(batch_size)
 	
 	dataset3 %>% 
 		dataset_map(unname) # Keras needs an unnamed output.
 	}
-	training_dataset <- create_dataset(training(data), train = TRUE, batch_size=batch_size, vision_dimensions=vision_dimensions)
+	training_dataset <- create_dataset(training(data_train), batch_size=batch_size, vision_dimensions=vision_dimensions)
 ########################################################################################################################################################################	
-	create_val <- function(data, train, batch_size = batch_size, vision_dimensions) {  
+	create_val <- function(data, batch_size = batch_size, vision_dimensions) {  
 	  dataset <- data %>% 
 		tensor_slices_dataset() %>% 
 		dataset_map(~.x %>% list_modify(
@@ -135,7 +156,7 @@ up_down <- function(img) {img %>% tf$image$flip_up_down()}
 		dataset_map(~.x %>% list_modify(
 		  img = tf$image$convert_image_dtype(.x$img, dtype = tf$float32),
 		  mask = tf$image$convert_image_dtype(.x$mask, dtype = tf$float32)
-		)) %>% 
+		)) #%>% 
 		dataset_map(~.x %>% list_modify(
 		  img = tf$image$resize(.x$img, size = shape(vision_dimensions, vision_dimensions)),
 		  mask = tf$image$resize(.x$mask, size = shape(vision_dimensions, vision_dimensions))
@@ -147,12 +168,12 @@ up_down <- function(img) {img %>% tf$image$flip_up_down()}
 	  dataset3 %>% 
 		dataset_map(unname) # Keras needs an unnamed output.
 	}
-	validation_dataset <- create_val(testing(data), train = FALSE, batch_size=batch_size, vision_dimensions=vision_dimensions)
+# validation_dataset <- create_val(testing(data_train), batch_size=batch_size, vision_dimensions=vision_dimensions)
 
 #####################################################################################################################
 # Training -----------------------------------------------------
 checkpoint_dir=paste0(trainDir,"\\Checkpoints");dir.create(checkpoint_dir,showWarnings = F)
-BaseName <<- basename(file.path(checkpoint_dir, "Val_{dice_coef:.2f}_epoch_{epoch:02d}_512.h5"))
+BaseName <<- basename(file.path(checkpoint_dir, "tr_{dice_coef:.2f}_epoch_{epoch:02d}_512.h5"))
 filepath <<- paste0(checkpoint_dir,"\\",Species,"_",dateTrain,"_",BaseName)
 output_name="train"
 
@@ -175,9 +196,11 @@ callbacks_list <- list(
 #############################################################################
 unet1 %>%  keras:::fit.keras.engine.training.Model(
   training_dataset,  
-  epochs = epochs, 
-  validation_data = validation_dataset,  
- callbacks = callbacks_list)
+  epochs = epochs,
+ 
+  callbacks = callbacks_list) 
+#   validation_data = validation_dataset,
+     
 
 a=get_weights(unet1)
 saveRDS(a,"WghtsNFSp")
@@ -192,23 +215,23 @@ saveRDS(a,"WghtsNFSp")
 #batch <- training_dataset %>% as_iterator() %>% iter_next()
 
 
-images <- tibble(
- image = batch[[1]] %>% array_branch(1),
+#images <- tibble(
+# image = batch[[1]] %>% array_branch(1),
   #predicted_mask = predictions[,,,1] %>% array_branch(1),
-  mask = batch[[2]][,,,1]  %>% array_branch(1)
-) %>% 
-  sample_n(2) %>% 
-  map_depth(2, function(x) {
-    as.raster(x) %>% magick::image_read()
-  }) %>% 
-  map(~do.call(c, .x))
+#  mask = batch[[2]][,,,1]  %>% array_branch(1)
+#) %>% 
+#  sample_n(2) %>% 
+#  map_depth(2, function(x) {
+#    as.raster(x) %>% magick::image_read()
+#  }) %>% 
+#  map(~do.call(c, .x))
 
 
-out <- magick::image_append(c(
-  magick::image_append(images$mask, stack = TRUE),
-  magick::image_append(images$image, stack = TRUE) 
- # magick::image_append(images$predicted_mask, stack = TRUE)
-  )
-)
-plot(out)
+#out <- magick::image_append(c(
+#  magick::image_append(images$mask, stack = TRUE),
+#  magick::image_append(images$image, stack = TRUE) 
+# # magick::image_append(images$predicted_mask, stack = TRUE)
+#  )
+#)
+#plot(out)
 

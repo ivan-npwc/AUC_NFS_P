@@ -240,22 +240,23 @@ problems[order(problems$val),]
 #############################################################
  
  
- fin=read.csv("CheckDataPrb2021.csv")
- GoodData=fin[fin$val > 0.17,]
+ fin=read.csv("CheckDataPrb2022.csv")
+ GoodData=fin[fin$val > 0.2,]
  Percent_30= round(length(GoodData$trainDir0)*0.3)
  index=sample(1:length(GoodData$trainDir0))[1:Percent_30]
  TestData=GoodData[index,]
+ write.csv(TestData,"TestData_2022.csv")
+ TrainData=GoodData[GoodData$trainDir0 != TestData$trainDir0,]
  
- 
- to = "C:\\Users\\usato\\SSL_DB\\TRAIN\\2021"
+ to = "C:\\Users\\usato\\SSL_DB\\TRAIN\\2021-2022_TRAIN"
  ImgTo=paste0(to,"\\Image")
  MskTo=paste0(to,"\\Mask")
  
  
  
-  for (y in 1: length(GoodData$val)) {
+  for (y in 1: length(TrainData$val)) {
   
-  labelInput=GoodData$trainDir0[y]
+  labelInput=TrainData$trainDir0[y]
   Mask_Image= paste0(labelInput,"Mask_Image")
   Images_Path=paste0(Mask_Image,"/", "Image")
   Masks_Path=paste0(Mask_Image,"/", "Mask")

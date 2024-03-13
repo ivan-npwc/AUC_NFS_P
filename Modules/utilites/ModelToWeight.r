@@ -1,7 +1,7 @@
 
 
 library(keras)
-pth= "C:\\Users\\usato\\SSL_DB\\TRAIN\\NFSp_withZero\\Checkpoints\\NFSp_withZero_20231228_Val_0.47_epoch_05_512.h5"
+pth= "C:\\Users\\usato\\SSL_DB\\TRAIN\\2021-2022_TRAIN\\all\\Checkpoints\\all_20240116_tr_0.28_epoch_01_512.h5"
 
  dice_coef <<- custom_metric("dice_coef", function(y_true, y_pred, smooth = 1.0) {
   y_true_f <- k_flatten(y_true)
@@ -16,4 +16,4 @@ unet1 <- load_model_hdf5(pth, custom_objects = c(dice_coef = dice_coef,
 
 
 a=get_weights(unet1)
-saveRDS(a,"20231228_Val_0.47_epoch_05")
+saveRDS(a,"start")
