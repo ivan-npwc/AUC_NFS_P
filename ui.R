@@ -11,11 +11,14 @@ navbarPage(actionLink('ResetSetting',   label=paste0("INPUT:___", pthOPP), style
                                                            "01_Unzip"="01_Unzip",
 														   "02.0_KMLprepare"="02.0_KMLprepare",
 														   "03_Image_prepare"="03_Image_prepare",
-                                "04_Predict_tf2"="04_Predict_tf2", 
+														   "03.1_REMOVE_IMGS_NO_PUPS" =  "03_SPLIT PRESENCE-ABSENCE VGG16",
+                                                           "04_Predict_tf2"="04_Predict_tf2", 
+								                          "05_BlobAnalys"="05_BlobAnalys",
 														   "05_Geo_ref"="05_Geo_ref",
 														   "06_KML"="06_KML",
-													
-														   
+														   "07_COORDs_AVERAGE"="07_COORDs_AVERAGE",
+													       "08_FP_FN"="08_FP_FN",
+														   "Error_calculate"="Error_calculate",
 														   
 														  "08.01_Points_table_for_mask"="08.01_Points_table_for_mask",
 														  "08.02_Animals_Count_On_Image"="08.02_Animals_Count_On_Image",
@@ -34,11 +37,12 @@ navbarPage(actionLink('ResetSetting',   label=paste0("INPUT:___", pthOPP), style
 														), 
 														#############
 				 fluidRow(column(width = 4, actionButton('Start_Batch_process', 'Start', width="200px")),
-				          column(width = 4, actionButton('Up', 'Up', width="200px"))
+				          column(width = 4, actionButton('Up', 'Up', width="200px")),
+						  column(width = 4, actionButton('TRAIN', 'TRAIN', width="200px"))
                            ),
 						   hr(),
-				 fluidRow(column(width = 4,textInput("X", "X:", value="0.00000006442986"))),
-				  fluidRow(column(width = 4,textInput("Y", "Y:", value="0.00000003503696"))),
+				 fluidRow(column(width = 4,textInput("X", "X:", value="3.221493e-08"))),  #0.00000006442986
+				  fluidRow(column(width = 4,textInput("Y", "Y:", value="1.751848e-08"))),  #0.00000003503696
                 
                 )),
 #######################################################################################################
@@ -57,7 +61,7 @@ tabPanel("Settings",
 		  hr(),
 		 checkboxInput("Blob_analysis_Check", "Blob_analysis_Check", value=Blob_analysis_Check),
 		  hr(),
-		   checkboxInput("Filter_by_Rookery_pol", "Filter_by_Rookery_pol", value=Filter_by_Rookery_pol),
+		   checkboxInput("Filter_by_Rookery_pol", "Filter_by_predict_polygon", value=Filter_by_Rookery_pol),
 	  	   fluidRow(dataTableOutput("text")) 
 ),
 #####################################################################################################

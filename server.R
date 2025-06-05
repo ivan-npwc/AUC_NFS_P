@@ -16,20 +16,25 @@ function(input, output, session) {
 	if (OPPListPred1=="All") {OPPListPred1 <<- listOPP}
   source("Modules/ListTMPUpdate.r")  })
   ############################################################################### 
+ observeEvent(input$TRAIN, {
+  source("C:\\Users\\usato\\SSL_DB\\AUC_NFS_P\\Modules\\utilites\\TRAIN_TF_2\\unet_train_model_4.r")  
+  })
+  ############################################################################### 
   observeEvent(input$Start_Batch_process, {
+   rep2 <<- NULL
     BatchProcessVector<<-input$Bath_Process
   	OPPListPred1<<-input$OPPListPred
    if (OPPListPred1=="All") {OPPListPred1 <<- listOPP}
    source("Modules/ListTMPUpdate.r")
     pth <<- paste0(pthOPP,"\\log.csv")
-    lg=data.frame(OPPListPred1=OPPListPred1,Process="Start",dtime=paste0(date())); write.csv(lg,pth,row.names = F)   
+  #  lg=data.frame(OPPListPred1=OPPListPred1,Process="Start",dtime=paste0(date())); write.csv(lg,pth,row.names = F)   
 #############  	   
 	while (OPPListPred1 != "") {
        k <<- length(OPPListPred1)
 	   psx <<- OPPListPred1[1]
 	   
 	   labelInput <<- gsub(basename(psx),"", psx)
-	     lg = read.csv(pth)
+	   #  lg = read.csv(pth)
         withProgress(message = paste0("Doing  ",labelInput), value = k , {    # for all opp
    for (g in 1:length(BatchProcessVector)) {
                withProgress(message = paste0(BatchProcessVector[g]), value = g, {     # 
@@ -38,9 +43,9 @@ function(input, output, session) {
       Sys.sleep(1) 
      	     print(paste0("Done  ",action,"   ",labelInput ))
 			 
-               strt <<- data.frame(OPPListPred1=psx, Process=BatchProcessVector[g], dtime=paste0(date()))
-               lg = rbind(lg,strt)
-              write.csv(lg,pth,row.names = F)                
+              # strt <<- data.frame(OPPListPred1=psx, Process=BatchProcessVector[g], dtime=paste0(date()))
+              # lg = rbind(lg,strt)
+             # write.csv(lg,pth,row.names = F)                
    }) 
    }
    OPPListPred1<<-OPPListPred1[!(OPPListPred1 %in% psx)]

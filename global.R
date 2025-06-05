@@ -36,7 +36,7 @@ listValue <<- readRDS("listUniq")
 listTMP <<-readRDS("listTMP")
 ######################
 pthOPP<<-listValue$pthOPP
-listOPP<<-listValue$listOPP
+listOPP <<- listValue$listOPP   #read.csv("F:\\Prb_TestData_20212022.csv")[,1]  
 
 
 NFS_Pup_weight_pth<<-listValue$NFS_Pup_weight_pth
